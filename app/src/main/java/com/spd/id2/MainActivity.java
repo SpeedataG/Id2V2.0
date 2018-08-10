@@ -1,7 +1,11 @@
 package com.spd.id2;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ImageSpan;
@@ -18,6 +22,7 @@ import com.spd.power.PowerGpio;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 
 import android_serialport_api.SerialPort;
 import androidx.appcompat.app.AppCompatActivity;
@@ -43,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         mInputStream = HxJ10ASerialPort.getmInputStream();
         mGpio = new PowerGpio(PowerGpio.MAIN);
         mGpio.powerOnDevice(93);
+        PlaySoundUtils.initSoundPool(this);
         onClick();
     }
 
@@ -52,10 +58,10 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 mReaderID = new HxJ10AReaderID();
 
-                mReaderID.setM_InputStream(mInputStream);
-                mReaderID.setM_OutputStream(mOutputStream);
+                mReaderID.setInputStream(mInputStream);
+                mReaderID.setOutputStream(mOutputStream);
 
-                int iRet = mReaderID.ReadCard();
+                int iRet = mReaderID.readCard();
                 if (iRet == 1) {
                     Log.d(TAG, "寻卡失败");
                     return;
@@ -69,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 // 居民身份证
-                if (!mReaderID.GetIDCardType()) {
+                if (!mReaderID.getIdCardType()) {
                     // 姓名
                     String readIdName = mReaderID.GetName();
                     // 性别
@@ -106,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                     mIdInfo.append(spanString);
                 }
                 // 外国人身份证
-                else if (mReaderID.GetIDCardType()) {
+                else if (mReaderID.getIdCardType()) {
                     // 英文姓名
                     String readIdEnName = mReaderID.GetEnName();
                     // 性别
@@ -130,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                     String readIdAuthorCode = mReaderID.GetIssAuthCode();
                     // 证件类型标识
                     @SuppressWarnings("unused")
-                    String deadIdCardSign = mReaderID.GetCardSign();
+                    String deadIdCardSign = mReaderID.getCardSign();
                     // 照片
                     Bitmap deadIdPicture = mReaderID.GetPicture();
                     String stringBuilder = "英文姓名：" + readIdEnName + "\r\n" +
@@ -160,11 +166,12 @@ public class MainActivity extends AppCompatActivity {
                 if (mBtReadCardIDLoop.getText().toString().equals("连续")) {
                     mBtReadCardIDLoop.setText("停止");
                     mReaderID = new HxJ10AReaderID();
-                    mReaderID.setM_InputStream(mInputStream);
-                    mReaderID.setM_OutputStream(mOutputStream);
+                    mReaderID.setInputStream(mInputStream);
+                    mReaderID.setOutputStream(mOutputStream);
 
                     // 开始连续读卡
                     mReadLoop = new ThreadReadIDLoop(mReaderID);
+                    mReadLoop.setM_ThreadSendhandler(mReceiveMsgFromThread);
                     mReadLoop.Start();
                 } else {
                     mBtReadCardIDLoop.setText("连续");
@@ -177,6 +184,60 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    @SuppressLint("HandlerLeak")
+    private MyHandler mReceiveMsgFromThread = new MyHandler(this) {
+        @Override
+        public void handleMessage(Message msg) {
+            try {
+                super.handleMessage(msg);
+
+                if (null == oReference.get()) {
+                    return;
+                }
+                PlaySoundUtils.play(1,1);
+                // 接收消息
+                switch (msg.what) {
+                    case 0:
+                        mIdInfo.setText("");
+                        String readIDError = (String) msg.obj;
+                        mIdInfo.append(readIDError + "\r\n");
+                    case 1:
+                        mIdInfo.setText("");
+                        String readInfoFromID = (String) msg.obj;
+                        mIdInfo.append(readInfoFromID + "\r\n");
+                        break;
+                    case 2:
+                        Bitmap readPictureFromID = (Bitmap) msg.obj;
+                        ImageSpan imgSpan = new ImageSpan(MainActivity.this, readPictureFromID);
+                        final SpannableString spanString = new SpannableString("icon");
+                        spanString.setSpan(imgSpan, 0, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        mIdInfo.append(spanString);
+                        break;
+                    case 3:
+                        mIdInfo.setText("");
+                        String breakInfoFromID = (String) msg.obj;
+                        mIdInfo.append(breakInfoFromID + "\r\n");
+                        break;
+
+                    default:
+                        break;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    public static class MyHandler extends Handler {
+        WeakReference<Activity> oReference;
+
+        MyHandler(Activity activity) {
+            oReference = new WeakReference<>(activity);
+        }
+    }
+
+    ;
 
     @Override
     protected void onDestroy() {

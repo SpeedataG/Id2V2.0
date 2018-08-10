@@ -41,7 +41,7 @@ public class ThreadReadIDLoop extends BaseThread
 
 			do
 			{
-				int iRet = mReaderID.ReadCard();
+				int iRet = mReaderID.readCard();
 				if (iRet == 1)
 				{
 					ErrMsg = "寻卡失败\r\n";
@@ -59,7 +59,7 @@ public class ThreadReadIDLoop extends BaseThread
 				}
 
 				// 居民身份证
-				if (mReaderID.GetIDCardType() == false)
+				if (mReaderID.getIdCardType() == false)
 				{
 					// 姓名
 					String ReadIDName = mReaderID.GetName();
@@ -95,7 +95,7 @@ public class ThreadReadIDLoop extends BaseThread
 					ResultPicture = ReadIDPicture;
 				}
 				// 外国人身份证
-				else if (mReaderID.GetIDCardType() == true)
+				else if (mReaderID.getIdCardType() == true)
 				{
 					// 英文姓名
 					String ReadIDEnName = mReaderID.GetEnName();
@@ -120,7 +120,7 @@ public class ThreadReadIDLoop extends BaseThread
 					String ReadIDAuthorCode = mReaderID.GetIssAuthCode();
 					// 证件类型标识
 					@SuppressWarnings("unused")
-					String ReadIDCardSign = mReaderID.GetCardSign();
+					String ReadIDCardSign = mReaderID.getCardSign();
 					// 照片
 					Bitmap ReadIDPicture = mReaderID.GetPicture();
 
