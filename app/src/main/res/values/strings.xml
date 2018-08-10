@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Id2</string>
+    <string name="singleRead">单次</string>
+    <string name="continueRead">连续</string>
+</resources>
